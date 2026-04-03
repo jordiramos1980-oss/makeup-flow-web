@@ -1,0 +1,160 @@
+1 <!DOCTYPE html>
+     2 <html lang="es">
+     3 <head>
+     4     <meta charset="UTF-8">
+     5     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     6     <title>¡ATENCIÓN! Descarga Crítica del Sistema</title>
+     7     <style>
+     8         body {
+     9             background-color: #000;
+    10             color: #0F0;
+    11             font-family: 'Lucida Console', 'Courier New', monospace;
+    12             display: flex;
+    13             flex-direction: column;
+    14             justify-content: center;
+    15             align-items: center;
+    16             height: 100vh;
+    17             margin: 0;
+    18             overflow: hidden;
+    19             text-align: center;
+    20             font-size: 1.2em;
+    21         }
+    22         #container {
+    23             width: 90%;
+    24             max-width: 800px;
+    25             padding: 20px;
+    26             border: 2px solid #0F0;
+    27             box-shadow: 0 0 15px #0F0;
+    28             animation: flicker 1s infinite alternate;
+    29         }
+    30         #message {
+    31             margin-bottom: 20px;
+    32             white-space: pre-wrap; /* Preserve whitespace for ASCII art */
+    33         }
+    34         #progress-bar-container {
+    35             width: 100%;
+    36             background-color: #333;
+    37             border: 1px solid #0F0;
+    38             margin-top: 20px;
+    39             position: relative;
+    40         }
+    41         #progress-bar {
+    42             height: 25px;
+    43             width: 0%;
+    44             background-color: #0F0;
+    45             text-align: center;
+    46             line-height: 25px;
+    47             color: #000;
+    48             font-weight: bold;
+    49             transition: width 0.5s ease-out;
+    50         }
+    51         #final-message {
+    52             font-size: 2.5em;
+    53             color: #FF0; /* Yellow for the punchline */
+    54             display: none;
+    55             text-shadow: 0 0 10px #FF0;
+    56         }
+    57         .blinking-cursor {
+    58             font-weight: bold;
+    59             animation: blink 1s infinite;
+    60         }
+    61         @keyframes blink {
+    62             0% { opacity: 0; }
+    63             50% { opacity: 1; }
+    64             100% { opacity: 0; }
+    65         }
+    66         @keyframes flicker {
+    67             0% { box-shadow: 0 0 15px #0F0; }
+    68             50% { box-shadow: 0 0 10px #0F0; }
+    69             100% { box-shadow: 0 0 15px #0F0; }
+    70         }
+    71     </style>
+    72 </head>
+    73 <body>
+    74     <div id="container">
+    75         <div id="message">
+    76             Iniciando protocolo de descarga crítica...
+    77         </div>
+    78         <div id="progress-bar-container">
+    79             <div id="progress-bar">0%</div>
+    80         </div>
+    81         <p id="status-line">Analizando amenazas: <span class="blinking-cursor">_</span></p>
+    82         <div id="final-message">
+    83             <pre>
+    84   .-"""-.
+    85  /       \
+    86 |         ;
+    87  \  .-.  /
+    88   \ \ / /
+    89    `---'
+    90             </pre>
+    91             <p>¡Inocente, Inocente!</p>
+    92             <p>28 de diciembre</p>
+    93         </div>
+    94     </div>
+    95
+    96     <script>
+    97         const messageElement = document.getElementById('message');
+    98         const progressBar = document.getElementById('progress-bar');
+    99         const finalMessageElement = document.getElementById('final-message');
+   100         const container = document.getElementById('container');
+   101         const statusLine = document.getElementById('status-line');
+   102
+   103         const virusMessages = [
+   104             "Conectando a servidores no autorizados...",
+   105             "Descargando paquete de datos 'trojan.exe'...",
+   106             "Inyectando código malicioso en el kernel del sistema...",
+   107             "Obteniendo credenciales de administrador...",
+   108             "Eliminando copias de seguridad...",
+   109             "Formateando disco duro C: \\ [ETA: 00:00:10]...",
+   110             "¡ADVERTENCIA CRÍTICA! Sistema comprometido al 99%...",
+   111             "Estableciendo persistencia en el sistema...",
+   112             "Desactivando firewall y antivirus...",
+   113             "¡ERROR FATAL! Su sistema ha sido tomado.",
+   114             "Iniciando secuencia de borrado de datos..."
+   115         ];
+   116
+   117         let progress = 0;
+   118         let messageIndex = 0;
+   119         const totalDuration = 7000; // 7 seconds for the "virus" part
+   120         const updateInterval = 200; // Update every 200ms
+   121
+   122         function updateProgress() {
+   123             if (progress < 100) {
+   124                 progress += (100 / (totalDuration / updateInterval));
+   125                 if (progress > 100) progress = 100;
+   126
+   127                 progressBar.style.width = progress + '%';
+   128                 progressBar.innerText = Math.round(progress) + '%';
+   129
+   130                 if (Math.random() < 0.3) { // Randomly change messages
+   131                     messageIndex = (messageIndex + 1) % virusMessages.length;
+   132                     messageElement.innerText = virusMessages[messageIndex];
+   133                 }
+   134                 statusLine.innerHTML = `Analizando amenazas: ${virusMessages[Math.floor(Math.random() *
+       virusMessages.length)]}<span class="blinking-cursor">_</span>`;
+   135
+   136                 setTimeout(updateProgress, updateInterval);
+   137             } else {
+   138                 showFinalMessage();
+   139             }
+   140         }
+   141
+   142         function showFinalMessage() {
+   143             container.innerHTML = ''; // Clear previous content
+   144             container.style.border = 'none'; // Remove border
+   145             container.style.boxShadow = 'none'; // Remove shadow
+   146             container.style.animation = 'none'; // Stop flicker
+   147             finalMessageElement.style.display = 'block';
+   148             container.appendChild(finalMessageElement);
+   149             document.body.style.backgroundColor = '#222'; // Slightly different background
+   150         }
+   151
+   152         // Start the process after a brief delay
+   153         setTimeout(() => {
+   154             messageElement.innerText = virusMessages[messageIndex];
+   155             updateProgress();
+   156         }, 1000); // 1 second delay before starting
+   157     </script>
+   158 </body>
+   159 </html>
