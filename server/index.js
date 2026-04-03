@@ -10,7 +10,7 @@ const dayjs = require('dayjs'); // Import dayjs
 require('dotenv').config();
 
 const app = express();
-const port = 3002; // Changed port to 3002
+const port = process.env.PORT || 3002; // Usa el puerto de Render o el 3002 por defecto
 
 app.use(cors());
 app.use(express.json());
@@ -21,6 +21,14 @@ const bookingsFilePath = path.join(__dirname, 'bookings.json');
 const customersFilePath = path.join(__dirname, 'customers.json');
 // Path to store Google API tokens
 const tokenFilePath = path.join(__dirname, 'token.json');
+
+// Asegurarse de que los archivos JSON existen para que no explote el servidor
+[bookingsFilePath, customersFilePath, tokenFilePath].forEach(file => {
+  if (!fs.existsSync(file)) {
+    fs.writeFileSync(file, '[]', 'utf8');
+  }
+});
+
 const emailTemplatePath = path.join(__dirname, 'emailTemplate.html');
 let emailHtmlTemplate = '';
 
