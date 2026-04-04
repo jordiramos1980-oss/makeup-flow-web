@@ -95,9 +95,36 @@ app.post('/api/book', async (req, res) => {
     };
 
     try {
+      // 1. Enviar aviso al dueño del negocio
       await transporter.sendMail(mailOptions);
-      console.log('Correo de aviso enviado con éxito.');
-      res.status(201).json({ message: 'Reserva creada y aviso enviado correctamente', booking });
+      console.log('Correo de aviso al dueño enviado con éxito.');
+
+      // 2. Enviar confirmación a la clienta
+      const customerMailOptions = {
+        from: process.env.EMAIL_USER,
+        to: booking.email, // Correo de la clienta
+        subject: '💄 Confirmación de tu reserva en Makeup Flow',
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #d63384;">¡Reserva Confirmada!</h2>
+            <p>Hola <strong>${booking.name}</strong>,</p>
+            <p>Muchas gracias por confiar en <strong>Makeup Flow</strong>. Tu cita se ha reservado correctamente:</p>
+            <ul>
+              <li><strong>Servicio:</strong> ${booking.service}</li>
+              <li><strong>Fecha:</strong> ${booking.date}</li>
+              <li><strong>Hora:</strong> ${booking.time}</li>
+            </ul>
+            <p>¡Nos vemos pronto!</p>
+            <hr>
+            <p style="font-size: 12px; color: #777;">Si necesitas cancelar o cambiar tu cita, por favor contáctanos lo antes posible.</p>
+          </div>
+        `
+      };
+
+      await transporter.sendMail(customerMailOptions);
+      console.log('Correo de confirmación enviado a la clienta con éxito.');
+
+      res.status(201).json({ message: 'Reserva creada y ambos correos enviados correctamente', booking });
     } catch (mailError) {
       console.error('Error al enviar el correo de aviso:', mailError);
       res.status(201).json({ message: 'Reserva creada, pero el correo de aviso falló', booking, error: mailError.message });
