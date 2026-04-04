@@ -32,7 +32,6 @@ let emailHtmlTemplate = '';
 try {
   if (fs.existsSync(emailTemplatePath)) {
     emailHtmlTemplate = fs.readFileSync(emailTemplatePath, 'utf8');
-    console.log('Email template loaded successfully.');
   } else {
     emailHtmlTemplate = '<h1>Nueva Reserva de Makeup Flow</h1><p>Has recibido una nueva reserva.</p>';
   }
@@ -49,6 +48,27 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// --- Google Calendar Setup ---
+const oAuth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
+
+// Load tokens if they exist
+const loadTokens = () => {
+  if (fs.existsSync(tokenFilePath)) {
+    const tokenData = fs.readFileSync(tokenFilePath, 'utf8');
+    if (tokenData && tokenData !== '[]') {
+      const tokens = JSON.parse(tokenData);
+      oAuth2Client.setCredentials(tokens);
+      console.log('Google tokens cargados con éxito.');
+      return true;
+    }
+  }
+  return false;
+};
+
 // --- Helper functions ---
 const readBookings = () => JSON.parse(fs.readFileSync(bookingsFilePath, 'utf8'));
 const writeBookings = (data) => fs.writeFileSync(bookingsFilePath, JSON.stringify(data, null, 2));
@@ -56,6 +76,31 @@ const readCustomers = () => JSON.parse(fs.readFileSync(customersFilePath, 'utf8'
 const writeCustomers = (data) => fs.writeFileSync(customersFilePath, JSON.stringify(data, null, 2));
 
 // --- API Routes ---
+
+// 1. Iniciar autorización de Google
+app.get('/api/auth/google', (req, res) => {
+  const scopes = ['https://www.googleapis.com/auth/calendar.events'];
+  const url = oAuth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: scopes,
+    prompt: 'consent'
+  });
+  res.redirect(url);
+});
+
+// 2. Callback de autorización de Google
+app.get('/api/auth/google/callback', async (req, res) => {
+  const { code } = req.query;
+  try {
+    const { tokens } = await oAuth2Client.getToken(code);
+    oAuth2Client.setCredentials(tokens);
+    fs.writeFileSync(tokenFilePath, JSON.stringify(tokens, null, 2), 'utf8');
+    res.send('<h1>¡Autorización completada!</h1><p>Ya puedes cerrar esta ventana.</p>');
+  } catch (error) {
+    console.error('Error en la autorización de Google:', error);
+    res.status(500).send('Error en la autorización.');
+  }
+});
 
 app.get('/api/availability', (req, res) => {
   const { date } = req.query;
@@ -78,56 +123,54 @@ app.post('/api/book', async (req, res) => {
       writeCustomers(customers);
     }
 
-    // --- ENVIAR CORREO DE AVISO ---
+    // --- GOOGLE CALENDAR EVENT ---
+    const tokensCargados = loadTokens();
+    if (tokensCargados) {
+      const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+      const startDateTime = dayjs(`${booking.date}T${booking.time}:00`).toISOString();
+      const endDateTime = dayjs(`${booking.date}T${booking.time}:00`).add(1, 'hour').toISOString();
+
+      const event = {
+        summary: `💄 Cita: ${booking.service} - ${booking.name}`,
+        description: `Cliente: ${booking.name} ${booking.surname}\nTeléfono: ${booking.phone}\nEmail: ${booking.email}`,
+        start: { dateTime: startDateTime, timeZone: 'Europe/Madrid' },
+        end: { dateTime: endDateTime, timeZone: 'Europe/Madrid' },
+      };
+
+      try {
+        await calendar.events.insert({
+          calendarId: 'primary',
+          resource: event,
+        });
+        console.log('Evento guardado en Google Calendar.');
+      } catch (calError) {
+        console.error('Error al guardar en el calendario:', calError);
+      }
+    } else {
+      console.log('No se pudo guardar en el calendario porque falta la autorización.');
+    }
+
+    // --- ENVIAR CORREOS ---
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER, // Te lo mandas a ti mismo
+      to: process.env.EMAIL_USER,
       subject: `💄 Nueva Reserva: ${booking.service} - ${booking.name}`,
-      html: `
-        <h2>¡Tienes una nueva reserva!</h2>
-        <p><strong>Cliente:</strong> ${booking.name} ${booking.surname}</p>
-        <p><strong>Servicio:</strong> ${booking.service}</p>
-        <p><strong>Fecha:</strong> ${booking.date}</p>
-        <p><strong>Hora:</strong> ${booking.time}</p>
-        <p><strong>Teléfono:</strong> ${booking.phone}</p>
-        <p><strong>Email:</strong> ${booking.email}</p>
-      `
+      html: `<h2>¡Tienes una nueva reserva!</h2><p>Cliente: ${booking.name}</p><p>Servicio: ${booking.service}</p><p>Fecha: ${booking.date}</p><p>Hora: ${booking.time}</p>`
     };
 
     try {
-      // 1. Enviar aviso al dueño del negocio
       await transporter.sendMail(mailOptions);
-      console.log('Correo de aviso al dueño enviado con éxito.');
-
-      // 2. Enviar confirmación a la clienta
       const customerMailOptions = {
         from: process.env.EMAIL_USER,
-        to: booking.email, // Correo de la clienta
+        to: booking.email,
         subject: '💄 Confirmación de tu reserva en Makeup Flow',
-        html: `
-          <div style="font-family: Arial, sans-serif; color: #333;">
-            <h2 style="color: #d63384;">¡Reserva Confirmada!</h2>
-            <p>Hola <strong>${booking.name}</strong>,</p>
-            <p>Muchas gracias por confiar en <strong>Makeup Flow</strong>. Tu cita se ha reservado correctamente:</p>
-            <ul>
-              <li><strong>Servicio:</strong> ${booking.service}</li>
-              <li><strong>Fecha:</strong> ${booking.date}</li>
-              <li><strong>Hora:</strong> ${booking.time}</li>
-            </ul>
-            <p>¡Nos vemos pronto!</p>
-            <hr>
-            <p style="font-size: 12px; color: #777;">Si necesitas cancelar o cambiar tu cita, por favor contáctanos lo antes posible.</p>
-          </div>
-        `
+        html: `<h2>¡Reserva Confirmada!</h2><p>Hola ${booking.name}, gracias por confiar en nosotros.</p><p>Servicio: ${booking.service}</p><p>Fecha: ${booking.date}</p><p>Hora: ${booking.time}</p>`
       };
-
       await transporter.sendMail(customerMailOptions);
-      console.log('Correo de confirmación enviado a la clienta con éxito.');
-
-      res.status(201).json({ message: 'Reserva creada y ambos correos enviados correctamente', booking });
+      res.status(201).json({ message: 'Reserva creada y todo enviado', booking });
     } catch (mailError) {
-      console.error('Error al enviar el correo de aviso:', mailError);
-      res.status(201).json({ message: 'Reserva creada, pero el correo de aviso falló', booking, error: mailError.message });
+      console.error('Error al enviar los correos:', mailError);
+      res.status(201).json({ message: 'Reserva creada, pero el correo falló', booking });
     }
   } catch (error) {
     console.error('Error en la reserva:', error);
@@ -136,7 +179,7 @@ app.post('/api/book', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.send('Servidor de Makeup Flow listo para enviar correos!');
+  res.send('Servidor de Makeup Flow listo para el calendario!');
 });
 
 app.listen(port, () => {
