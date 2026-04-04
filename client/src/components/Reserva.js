@@ -103,6 +103,7 @@ const Reserva = () => {
     };
 
     try {
+      console.log('Intentando conectar con:', 'https://makeup-flow-server.onrender.com/api/book');
       const response = await fetch('https://makeup-flow-server.onrender.com/api/book', {
         method: 'POST',
         headers: {
