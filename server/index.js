@@ -34,11 +34,20 @@ try {
     emailHtmlTemplate = fs.readFileSync(emailTemplatePath, 'utf8');
     console.log('Email template loaded successfully.');
   } else {
-    emailHtmlTemplate = '<h1>Reserva Confirmada</h1><p>Gracias por tu reserva.</p>';
+    emailHtmlTemplate = '<h1>Nueva Reserva de Makeup Flow</h1><p>Has recibido una nueva reserva.</p>';
   }
 } catch (error) {
   console.error('Error loading email template:', error);
 }
+
+// --- Configuración del Cartero (Nodemailer) ---
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
 
 // --- Helper functions ---
 const readBookings = () => JSON.parse(fs.readFileSync(bookingsFilePath, 'utf8'));
@@ -46,52 +55,62 @@ const writeBookings = (data) => fs.writeFileSync(bookingsFilePath, JSON.stringif
 const readCustomers = () => JSON.parse(fs.readFileSync(customersFilePath, 'utf8'));
 const writeCustomers = (data) => fs.writeFileSync(customersFilePath, JSON.stringify(data, null, 2));
 
-// --- Google Calendar Setup ---
-const oAuth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
-
-// Load tokens if they exist
-if (fs.existsSync(tokenFilePath)) {
-  const tokenData = fs.readFileSync(tokenFilePath, 'utf8');
-  if (tokenData && tokenData !== '[]') {
-    oAuth2Client.setCredentials(JSON.parse(tokenData));
-  }
-}
-
 // --- API Routes ---
 
-// 1. Get Availability
 app.get('/api/availability', (req, res) => {
   const { date } = req.query;
   const bookings = readBookings();
-  const bookedTimes = bookings
-    .filter(b => b.date === date)
-    .map(b => b.time);
+  const bookedTimes = bookings.filter(b => b.date === date).map(b => b.time);
   res.json({ bookedTimes });
 });
 
-// 2. Create Booking
 app.post('/api/book', async (req, res) => {
-  const booking = { id: uuidv4(), ...req.body };
-  const bookings = readBookings();
-  bookings.push(booking);
-  writeBookings(bookings);
-  
-  // Guardar como cliente también
-  const customers = readCustomers();
-  if (!customers.find(c => c.email === booking.email)) {
-    customers.push({ id: uuidv4(), name: booking.name, email: booking.email, phone: booking.phone });
-    writeCustomers(customers);
-  }
+  try {
+    const booking = { id: uuidv4(), ...req.body };
+    const bookings = readBookings();
+    bookings.push(booking);
+    writeBookings(bookings);
+    
+    // Guardar cliente
+    const customers = readCustomers();
+    if (!customers.find(c => c.email === booking.email)) {
+      customers.push({ id: uuidv4(), name: booking.name, email: booking.email, phone: booking.phone });
+      writeCustomers(customers);
+    }
 
-  res.status(201).json({ message: 'Reserva creada', booking });
+    // --- ENVIAR CORREO DE AVISO ---
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER, // Te lo mandas a ti mismo
+      subject: `💄 Nueva Reserva: ${booking.service} - ${booking.name}`,
+      html: `
+        <h2>¡Tienes una nueva reserva!</h2>
+        <p><strong>Cliente:</strong> ${booking.name} ${booking.surname}</p>
+        <p><strong>Servicio:</strong> ${booking.service}</p>
+        <p><strong>Fecha:</strong> ${booking.date}</p>
+        <p><strong>Hora:</strong> ${booking.time}</p>
+        <p><strong>Teléfono:</strong> ${booking.phone}</p>
+        <p><strong>Email:</strong> ${booking.email}</p>
+      `
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.log('Error al enviar correo:', error);
+      } else {
+        console.log('Correo enviado: ' + info.response);
+      }
+    });
+
+    res.status(201).json({ message: 'Reserva creada y aviso enviado', booking });
+  } catch (error) {
+    console.error('Error en la reserva:', error);
+    res.status(500).json({ message: 'Error interno en el servidor' });
+  }
 });
 
 app.get('/', (req, res) => {
-  res.send('Servidor de Makeup Flow funcionando correctamente en Render!');
+  res.send('Servidor de Makeup Flow listo para enviar correos!');
 });
 
 app.listen(port, () => {
