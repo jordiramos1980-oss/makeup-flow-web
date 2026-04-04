@@ -47,7 +47,7 @@ const Reserva = () => {
       if (selectedDate) {
         try {
           const formattedDate = selectedDate.format('YYYY-MM-DD');
-          const response = await fetch(`https://makeup-flow-web.onrender.com/api/availability?date=${formattedDate}`);
+          const response = await fetch(`https://makeup-flow-server.onrender.com/api/availability?date=${formattedDate}`);
           if (response.ok) {
             const data = await response.json();
             setRealBookedTimes(data.bookedTimes);
@@ -103,7 +103,7 @@ const Reserva = () => {
     };
 
     try {
-      const response = await fetch('https://makeup-flow-web.onrender.com/api/book', {
+      const response = await fetch('https://makeup-flow-server.onrender.com/api/book', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,7 +131,7 @@ const Reserva = () => {
         });
         // Refetch booked times to update UI after a successful booking
         const formattedDate = selectedDate.format('YYYY-MM-DD');
-        const updatedResponse = await fetch(`https://makeup-flow-web.onrender.com/api/availability?date=${formattedDate}`);
+        const updatedResponse = await fetch(`https://makeup-flow-server.onrender.com/api/availability?date=${formattedDate}`);
         if (updatedResponse.ok) {
           const updatedData = await updatedResponse.json();
           setRealBookedTimes(updatedData.bookedTimes);
