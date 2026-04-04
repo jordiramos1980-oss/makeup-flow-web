@@ -7,6 +7,10 @@ const Promotions = () => {
       <Typography variant="h4" gutterBottom>
         Ofertas y Promociones
       </Typography>
+      <Typography variant="body1" sx={{ mt: 2 }}>
+        Próximamente nuevas ofertas y promociones. ¡Estad atentos!
+      </Typography>
+      {/* Ocultando imágenes con errores ortográficos
       <Box
         component="img"
         src="/assets/images/promociones/oferta_new_1.png"
@@ -31,6 +35,7 @@ const Promotions = () => {
           mt: 4 // Add more margin top for spacing
         }}
       />
+      */}
     </Box>
   );
 };
