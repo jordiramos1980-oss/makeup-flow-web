@@ -11,7 +11,6 @@ const promotionImages = [
   '/assets/images/promociones/promo2.png',
   '/assets/images/promociones/promo3.png',
   '/assets/images/promociones/promo4.png',
-  '/assets/images/promociones/promo5.png',
 ];
 
 const Home = () => {
@@ -135,7 +134,7 @@ const Home = () => {
         }}
       />
 
-      {/* Promotions Carousel Section (Temporarily hidden due to typos)
+      {/* Promotions Carousel Section (Formerly hidden, now active with updated images) */}
       <Box sx={{ width: '100%', maxWidth: '900px', mt: 5, mb: 5 }}>
         <Typography variant="h4" component="h2" sx={{ mb: 4, color: 'white', fontWeight: 'bold' }}>
           Promociones Destacadas
@@ -157,7 +156,6 @@ const Home = () => {
           />
         </Link>
       </Box>
-      */}
 
       {/* Social Media Links */}
       <SocialLinks />
