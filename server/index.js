@@ -94,15 +94,14 @@ app.post('/api/book', async (req, res) => {
       `
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.log('Error al enviar correo:', error);
-      } else {
-        console.log('Correo enviado: ' + info.response);
-      }
-    });
-
-    res.status(201).json({ message: 'Reserva creada y aviso enviado', booking });
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log('Correo de aviso enviado con éxito.');
+      res.status(201).json({ message: 'Reserva creada y aviso enviado correctamente', booking });
+    } catch (mailError) {
+      console.error('Error al enviar el correo de aviso:', mailError);
+      res.status(201).json({ message: 'Reserva creada, pero el correo de aviso falló', booking, error: mailError.message });
+    }
   } catch (error) {
     console.error('Error en la reserva:', error);
     res.status(500).json({ message: 'Error interno en el servidor' });
