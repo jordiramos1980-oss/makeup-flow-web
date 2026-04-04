@@ -135,7 +135,7 @@ const Home = () => {
         }}
       />
 
-      {/* Promotions Carousel Section (formerly Specialties) */}
+      {/* Promotions Carousel Section (Temporarily hidden due to typos)
       <Box sx={{ width: '100%', maxWidth: '900px', mt: 5, mb: 5 }}>
         <Typography variant="h4" component="h2" sx={{ mb: 4, color: 'white', fontWeight: 'bold' }}>
           Promociones Destacadas
@@ -157,6 +157,7 @@ const Home = () => {
           />
         </Link>
       </Box>
+      */}
 
       {/* Social Media Links */}
       <SocialLinks />
