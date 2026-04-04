@@ -12,341 +12,140 @@ import {
   Grid,
   Alert,
   Link as MuiLink,
-  Select, // Added Select
-  MenuItem, // Added MenuItem
-  InputLabel, // Added InputLabel
+  Select,
+  MenuItem,
+  InputLabel,
 } from '@mui/material';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
-import 'dayjs/locale/es'; // Import Spanish locale
-
+import 'dayjs/locale/es';
 
 const Reserva = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState('');
-  const [selectedService, setSelectedService] = useState(''); // New state for selected service
+  const [selectedService, setSelectedService] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     surname: '',
     phone: '',
     email: '',
   });
-  const [bookingStatus, setBookingStatus] = useState(null); // { type: 'success' | 'error', message: string, whatsappLink?: string }
-  const [realBookedTimes, setRealBookedTimes] = useState([]); // State to store real booked times
+  const [bookingStatus, setBookingStatus] = useState(null);
+  const [realBookedTimes, setRealBookedTimes] = useState([]);
 
-  const serviceOptions = ['Maquillaje', 'Manicura', 'Masaje']; // Hardcoded service options for now
+  const serviceOptions = ['Maquillaje', 'Manicura', 'Masaje'];
   const availableTimes = {
     morning: ['09:00', '10:00', '11:00', '12:00', '13:00'],
     afternoon: ['17:00', '18:00', '19:00'],
   };
+
+  const API_URL = 'https://makeup-flow-web.onrender.com';
 
   useEffect(() => {
     const fetchBookedTimes = async () => {
       if (selectedDate) {
         try {
           const formattedDate = selectedDate.format('YYYY-MM-DD');
-          const response = await fetch(`https://makeup-flow-web.onrender.com/api/availability?date=${formattedDate}`);
+          const response = await fetch(`${API_URL}/api/availability?date=${formattedDate}`);
           if (response.ok) {
             const data = await response.json();
-            setRealBookedTimes(data.bookedTimes);
-          } else {
-            console.error('Error fetching booked times:', response.statusText);
-            setRealBookedTimes([]);
+            setRealBookedTimes(data.bookedTimes || []);
           }
         } catch (error) {
-          console.error('Network error fetching booked times:', error);
-          setRealBookedTimes([]);
+          console.error('Error al obtener disponibilidad:', error);
         }
-      } else {
-        setRealBookedTimes([]);
       }
     };
     fetchBookedTimes();
-  }, [selectedDate]); // Refetch when selectedDate changes
-
-  const handleDateChange = (newValue) => {
-    setSelectedDate(newValue);
-    setSelectedTime(''); // Reset time when date changes
-    setBookingStatus(null); // Clear status when date changes
-  };
-
-  const handleTimeChange = (event) => {
-    setSelectedTime(event.target.value);
-    setBookingStatus(null); // Clear status when time changes
-  };
-
-  const handleServiceChange = (event) => {
-    setSelectedService(event.target.value);
-    setBookingStatus(null); // Clear status when service changes
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    setBookingStatus(null); // Clear status when form data changes
-  };
+  }, [selectedDate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setBookingStatus(null); // Clear previous status
-    if (!selectedService || !selectedDate || !selectedTime || !formData.name || !formData.surname || !formData.phone || !formData.email) {
-      alert('Por favor, rellena todos los campos.');
+    setBookingStatus({ type: 'info', message: 'Enviando reserva...' });
+
+    if (!selectedService || !selectedDate || !selectedTime || !formData.name || !formData.email) {
+      alert('Por favor, completa los campos obligatorios.');
+      setBookingStatus(null);
       return;
     }
+
     const bookingDetails = {
-      service: selectedService, // Include selected service
+      service: selectedService,
       date: selectedDate.format('YYYY-MM-DD'),
       time: selectedTime,
       ...formData,
     };
 
     try {
-      console.log('Intentando conectar con:', 'https://makeup-flow-web.onrender.com/api/book');
-      const response = await fetch('https://makeup-flow-web.onrender.com/api/book', {
+      const response = await fetch(`${API_URL}/api/book`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bookingDetails),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const data = await response.json();
-        setBookingStatus({
-          type: 'success',
-          message: '¡Reserva realizada con éxito! Recibirás un email de confirmación.',
-          whatsappLink: data.whatsappLink,
-        });
-        console.log('Reserva confirmada:', data);
-        // Clear form after successful submission
+        setBookingStatus({ type: 'success', message: data.message });
+        // Limpiar formulario
         setSelectedDate(null);
         setSelectedTime('');
-        setSelectedService(''); // Clear selected service
-        setFormData({
-          name: '',
-          surname: '',
-          phone: '',
-          email: '',
-        });
-        // Refetch booked times to update UI after a successful booking
-        const formattedDate = selectedDate.format('YYYY-MM-DD');
-        const updatedResponse = await fetch(`https://makeup-flow-web.onrender.com/api/availability?date=${formattedDate}`);
-        if (updatedResponse.ok) {
-          const updatedData = await updatedResponse.json();
-          setRealBookedTimes(updatedData.bookedTimes);
-        }
+        setSelectedService('');
+        setFormData({ name: '', surname: '', phone: '', email: '' });
       } else {
-        const errorData = await response.json();
-        setBookingStatus({
-          type: 'error',
-          message: `Error al realizar la reserva: ${errorData.message || response.statusText}`,
-        });
-        console.error('Error al enviar la reserva:', errorData);
+        setBookingStatus({ type: 'error', message: data.message || 'Error en el servidor' });
       }
     } catch (error) {
-      console.error('Error de red al enviar la reserva:', error);
-      setBookingStatus({ type: 'error', message: 'Error de conexión. Inténtalo de nuevo más tarde.' });
+      setBookingStatus({ type: 'error', message: 'Error de conexión con el servidor.' });
     }
   };
 
-  // User requested Monday-Saturday, so disable Sunday only.
-  const disableSunday = (date) => {
-    return date.day() === 0; // Disable Sunday (0)
-  };
-
   return (
-    <Box
-      sx={{
-        p: 3,
-        minHeight: '100vh', // Ensure it covers the full viewport height
-        backgroundColor: '#FFEBEE', // Set light pink background color
-        color: '#000000', // Black text for contrast on light background
-      }}
-    >
-      <Typography variant="h4" gutterBottom>
-        Reserva tu Cita
-      </Typography>
-
+    <Box sx={{ p: 3, minHeight: '100vh', backgroundColor: '#FFEBEE' }}>
+      <Typography variant="h4" gutterBottom>Reserva tu Cita</Typography>
       <form onSubmit={handleSubmit}>
         <Grid container spacing={3}>
-          {/* Service Selection Dropdown */}
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth margin="normal" required>
-              <InputLabel id="service-select-label">1. Selecciona el Servicio</InputLabel>
-              <Select
-                labelId="service-select-label"
-                id="service-select"
-                value={selectedService}
-                label="1. Selecciona el Servicio"
-                onChange={handleServiceChange}
-              >
-                {serviceOptions.map((service) => (
-                  <MenuItem key={service} value={service}>
-                    {service}
-                  </MenuItem>
-                ))}
+            <FormControl fullWidth required>
+              <InputLabel>1. Servicio</InputLabel>
+              <Select value={selectedService} label="1. Servicio" onChange={(e) => setSelectedService(e.target.value)}>
+                {serviceOptions.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
-
-          {/* Date Picker */}
           <Grid item xs={12} md={6}>
-            <FormControl fullWidth margin="normal">
-              <FormLabel component="legend">2. Selecciona el día</FormLabel>
-              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
-                <DatePicker
-                  label="Fecha"
-                  value={selectedDate}
-                  onChange={handleDateChange}
-                  shouldDisableDate={disableSunday} // Only disable Sunday
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      fullWidth
-                      readOnly
-                    />
-                  )}
-                />
-              </LocalizationProvider>
-            </FormControl>
+            <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+              <DatePicker label="2. Día" value={selectedDate} onChange={(v) => setSelectedDate(v)} renderInput={(p) => <TextField {...p} fullWidth />} />
+            </LocalizationProvider>
           </Grid>
-
-          {/* Time Slot Selection */}
-          <Grid item xs={12} md={6}>
-            {selectedDate && (
-              <FormControl component="fieldset" margin="normal">
-                <FormLabel component="legend">3. Selecciona la hora (L-S)</FormLabel>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Typography variant="subtitle1" sx={{ mt: 2 }}>
-                    Mañana (09:00 - 14:00)
-                  </Typography>
-                  <RadioGroup
-                    aria-label="morning-time"
-                    name="morning-time-group"
-                    value={selectedTime}
-                    onChange={handleTimeChange}
-                    row
-                  >
-                    {availableTimes.morning.map((time) => (
-                      <FormControlLabel
-                        key={time}
-                        value={time}
-                        control={<Radio />}
-                        label={time}
-                        disabled={realBookedTimes.includes(time)} // Use realBookedTimes
-                      />
-                    ))}
-                  </RadioGroup>
-
-                  <Typography variant="subtitle1" sx={{ mt: 2 }}>
-                    Tarde (17:00 - 20:00)
-                  </Typography>
-                  <RadioGroup
-                    aria-label="afternoon-time"
-                    name="afternoon-time-group"
-                    value={selectedTime}
-                    onChange={handleTimeChange}
-                    row
-                  >
-                    {availableTimes.afternoon.map((time) => (
-                      <FormControlLabel
-                        key={time}
-                        value={time}
-                        control={<Radio />}
-                        label={time}
-                        disabled={realBookedTimes.includes(time)} // Use realBookedTimes
-                      />
-                    ))}
-                  </RadioGroup>
-                </Box>
-              </FormControl>
-            )}
-          </Grid>
-
-          {/* Personal Details Form */}
+          {selectedDate && (
+            <Grid item xs={12}>
+              <FormLabel>3. Hora</FormLabel>
+              <RadioGroup row value={selectedTime} onChange={(e) => setSelectedTime(e.target.value)}>
+                {[...availableTimes.morning, ...availableTimes.afternoon].map((t) => (
+                  <FormControlLabel key={t} value={t} control={<Radio />} label={t} disabled={realBookedTimes.includes(t)} />
+                ))}
+              </RadioGroup>
+            </Grid>
+          )}
           <Grid item xs={12}>
-            <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
-              4. Tus Datos Personales
-            </Typography>
-            <TextField
-              label="Nombre"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              fullWidth
-              margin="normal"
-              required
-            />
-            <TextField
-              label="Apellidos"
-              name="surname"
-              value={formData.surname}
-              onChange={handleInputChange}
-              fullWidth
-              margin="normal"
-              required
-            />
-            <TextField
-              label="Teléfono"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              fullWidth
-              margin="normal"
-              required
-            />
-            <TextField
-              label="Correo Electrónico"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              fullWidth
-              margin="normal"
-              type="email"
-              required
-            />
+            <Typography variant="h6">4. Tus Datos</Typography>
+            <TextField label="Nombre" fullWidth margin="normal" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
+            <TextField label="Teléfono" fullWidth margin="normal" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} required />
+            <TextField label="Email" fullWidth margin="normal" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required type="email" />
           </Grid>
-
-          {/* Submit Button */}
           <Grid item xs={12}>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              sx={{ mt: 3 }}
-              disabled={!selectedService || !selectedDate || !selectedTime || !formData.name || !formData.surname || !formData.phone || !formData.email}
-            >
-              Confirmar Reserva
-            </Button>
+            <Button type="submit" variant="contained" color="primary" size="large">Confirmar Reserva</Button>
           </Grid>
         </Grid>
       </form>
-
       {bookingStatus && (
-        <Box sx={{ mt: 4 }}>
-          {bookingStatus.type === 'success' ? (
-            <Alert severity="success">
-              <Typography variant="h6">{bookingStatus.message}</Typography>
-              {bookingStatus.whatsappLink && (
-                <Typography sx={{ mt: 1 }}>
-                  Puedes confirmarla también por WhatsApp:{' '}
-                  <MuiLink href={bookingStatus.whatsappLink} target="_blank" rel="noopener noreferrer">
-                    Enviar WhatsApp
-                  </MuiLink>
-                </Typography>
-              )}
-            </Alert>
-          ) : (
-            <Alert severity="error">
-              <Typography variant="h6">{bookingStatus.message}</Typography>
-            </Alert>
-          )}
-        </Box>
+        <Alert severity={bookingStatus.type === 'info' ? 'info' : bookingStatus.type} sx={{ mt: 3 }}>
+          {bookingStatus.message}
+        </Alert>
       )}
-
-
     </Box>
   );
 };
